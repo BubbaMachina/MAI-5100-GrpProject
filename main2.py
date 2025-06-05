@@ -1,17 +1,42 @@
+"""
+    MAI 5100 Group Project
+    This is the main file
+    There (will be) a Graphics, Agent and Maze file
+    
+    This code is structured as follows
+    1) Imports
+    2) Maze Parameters & 2D array Generation
+    3) Pybullet Initialization & Maze Generation
+    4) Agent Declarations
+    5) Main Function
+"""
+
+###########################
+# 1) Imports
+###########################
+
 import pybullet as p
 import pybullet_data
 import time
 import heapq
 import random
 
+###########################
+# 2) Maze & Grid Generation
+###########################
+
 # === PARAMETERS ===
-maze_rows = 10
-maze_cols = 10
+gridSize = 10
+maze_rows = gridSize
+maze_cols = gridSize
 obstacle_prob = 0.2  # Probability of a wall per cell
 num_goals = 3
 num_agents = 2
 bot_size = 0.2
 
+###########################
+# 3) Pybullet Setup & Grid Generation
+###########################
 # === SETUP ===
 p.connect(p.GUI)
 p.setGravity(0, 0, -9.81)
@@ -86,6 +111,10 @@ while len(traffic_agents) < num_agents:
         agent_id = p.createMultiBody(0, -1, agent_vis, basePosition=[x, maze_rows - y - 1, 0.4])
         traffic_agents.append([(x, y), agent_id])
         occupied_positions.add((x, y))
+
+###########################
+# 4) Agent Declarations & Behavior
+###########################
 
 # === A* PATHFINDING ===
 def neighbors(pos):
@@ -163,6 +192,10 @@ def move_agents_randomly():
         if not moved:
             updated_agents.append((pos, aid))  # No valid move
     traffic_agents = updated_agents
+
+###########################
+# 5) Main Code
+###########################
 
 # === PLAN AND EXECUTE ===
 print("Selected goal:", goal)
