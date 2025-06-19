@@ -109,122 +109,79 @@ def greedyAstar(start, maze, gridSize):
 
 def greedy_aStar_with_CSP(start, goals, grid, gridSize, enemies=None):
     """
-    Plan an optimal goal schedule minimizing total travel time while respecting deadlines,
-    treating required and optional goals simultaneously like a CSP.
+    Plan an optimal goal schedule minimizing total travel time while respecting deadlines.
 
     Parameters:
         start: (x, y) start position
-        goals: list of (x, y, deadline) — deadline==0 means optional
-        grid: 2D grid of maze
-        gridSize: parameter for astar (if needed)
+        goals: list of (x, y, deadline) - deadline = 0 means no constraint, but goal is still mandatory
+        grid: 2D grid representing the maze
+        gridSize: cell size or related param for A* (if needed)
         enemies: list of enemy positions (optional)
 
     Returns:
-        list of (x, y) positions representing full flattened path through goals
+        list of (x, y) positions representing full flattened path through all goals
     """
+    from itertools import permutations
 
-    fear_set = None
+    fear_set = None  # Replace with actual fear radius logic if needed
     memo = {}
 
-    # Separate required and optional goals
-    required_goals = [((x, y), d) for (x, y, d) in goals if d > 0]
-    optional_goals = [((x, y), d) for (x, y, d) in goals if d == 0]
+    required_goals = [((x, y), d) for (x, y, d) in goals]  # All are mandatory
 
-    def dfs(current_pos, time_so_far, remaining_required, remaining_optional, visited_optional):
-        key = (
-            current_pos,
-            time_so_far,
-            tuple(sorted(remaining_required)),
-            tuple(sorted(remaining_optional)),
-            tuple(sorted(visited_optional)),
-        )
+    # Precompute pairwise shortest paths between all nodes (start + all goals)
+    nodes = [start] + [pos for (pos, _) in required_goals]
+    pairwise_paths = {}
+
+    for i in range(len(nodes)):
+        for j in range(len(nodes)):
+            if i != j:
+                src, dest = nodes[i], nodes[j]
+                if (src, dest) not in pairwise_paths:
+                    path = astar(src, dest, grid, gridSize, fear_set)
+                    if path:
+                        pairwise_paths[(src, dest)] = (path, len(path))
+                    else:
+                        pairwise_paths[(src, dest)] = (None, float('inf'))
+
+    # Recursive DFS with memoization to explore all permutations
+    def dfs(current_pos, time_so_far, remaining_goals):
+        key = (current_pos, time_so_far, tuple(sorted(remaining_goals)))
         if key in memo:
             return memo[key]
 
-        # If no required or optional goals left, return empty path
-        if not remaining_required and not remaining_optional:
+        if not remaining_goals:
             return [], 0
 
         best_path = []
         best_cost = float('inf')
 
-        # Try visiting each required goal next (required goals must meet deadlines)
-        for (goal_pos, deadline) in remaining_required:
-            path = astar(current_pos, goal_pos, grid, gridSize, fear_set)
+        for (goal_pos, deadline) in remaining_goals:
+            path, travel_time = pairwise_paths.get((current_pos, goal_pos), (None, float('inf')))
             if path is None:
                 continue
 
-            travel_time = len(path)
             arrival_time = time_so_far + travel_time
-
-            # Skip if deadline violated
-            if arrival_time > deadline:
+            if deadline > 0 and arrival_time > deadline:
                 continue
 
-            new_remaining_required = remaining_required.copy()
-            new_remaining_required.remove((goal_pos, deadline))
+            new_remaining = remaining_goals.copy()
+            new_remaining.remove((goal_pos, deadline))
 
-            # Optional goals and visited optional remain unchanged here
-            sub_path, sub_cost = dfs(goal_pos, arrival_time, new_remaining_required, remaining_optional, visited_optional)
+            sub_path, sub_cost = dfs(goal_pos, arrival_time, new_remaining)
             total_cost = travel_time + sub_cost
 
             if total_cost < best_cost:
-                # Merge paths avoiding duplicates
                 if sub_path and path[-1] == sub_path[0]:
                     combined_path = path + sub_path[1:]
                 else:
                     combined_path = path + sub_path
-
-                best_path = combined_path
-                best_cost = total_cost
-
-        # Try visiting optional goals if not already visited
-        for (opt_pos, _) in remaining_optional:
-            if opt_pos in visited_optional:
-                continue  # skip if already visited
-
-            path = astar(current_pos, opt_pos, grid, gridSize, fear_set)
-            if path is None:
-                continue
-
-            travel_time = len(path)
-            arrival_time = time_so_far + travel_time
-
-            # Prune if visiting optional goal delays any required goal beyond deadline
-            prune = False
-            for (req_pos, req_deadline) in remaining_required:
-                # estimate travel from optional goal to required goal (heuristic: Manhattan)
-                est_travel = abs(opt_pos[0] - req_pos[0]) + abs(opt_pos[1] - req_pos[1])
-                if arrival_time + est_travel > req_deadline:
-                    prune = True
-                    break
-            if prune:
-                continue
-
-            new_visited_optional = visited_optional.copy()
-            new_visited_optional.add(opt_pos)
-
-            # We keep remaining_optional the same because optional goals can be revisited if wanted,
-            # but we prevent revisiting via visited_optional
-            sub_path, sub_cost = dfs(opt_pos, arrival_time, remaining_required, remaining_optional, new_visited_optional)
-            # Add a small penalty for optional detours if desired, else zero
-            optional_penalty = 0
-
-            total_cost = travel_time + sub_cost + optional_penalty
-
-            if total_cost < best_cost:
-                if sub_path and path[-1] == sub_path[0]:
-                    combined_path = path + sub_path[1:]
-                else:
-                    combined_path = path + sub_path
-
                 best_path = combined_path
                 best_cost = total_cost
 
         memo[key] = (best_path, best_cost)
         return memo[key]
 
-    final_path, _ = dfs(start, 0, required_goals, optional_goals, set())
+    final_path, _ = dfs(start, 0, required_goals)
     return final_path
 
 

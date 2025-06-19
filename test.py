@@ -6,12 +6,12 @@ import pybullet as p
 # gridsize, obstacle is 1, # of goals(2), # of enemies(3)
 # Player is #4
 bot_size = 0.15
-gridSize = 8
-obst_prob = 0
-num_agents = 2
-num_goals = 5
+gridSize = 12
+obst_prob = 0.1
+num_agents = 0
+num_goals = 3
 maze1,goals1,startPos = generateMaze(gridSize,obst_prob,num_agents,num_goals)
-goals1 = assignRandomDeadlines(goals1,40,60,0.3)
+goals1 = assignRandomDeadlines(goals1,gridSize,gridSize*2,0.3)
 print("1 maze is:",maze1)
 print("2 goals are",goals1)
 print("3 starting position is",startPos)
@@ -26,8 +26,8 @@ display_goal_deadlines(goals1,gridSize)
 # a-Single Goal path planning
 # path = astar(startPos,goals1[0],maze1,gridSize)
 # b-Multi-Goal Greedy Path planning
-path = greedyAstar(startPos,maze1,gridSize)
-# path = greedy_aStar_with_CSP(startPos,goals1,maze1,gridSize)
+# path = greedyAstar(startPos,maze1,gridSize)
+path = greedy_aStar_with_CSP(startPos,goals1,maze1,gridSize)
 
 print("6 Final Planned path:",path)
 pathLines = draw_path_lines(path,gridSize)
