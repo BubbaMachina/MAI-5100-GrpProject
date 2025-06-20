@@ -3,6 +3,7 @@ import pybullet_data
 import time
 import heapq
 import random
+import math
 
 """
     This section of code is responsible for converting the mazeGenerator into a pybullet Render
@@ -81,10 +82,10 @@ def generate_pybullet_maze(maze,maze_rows,maze_cols):
                 
 # Bot movement
 
-def move_bot_in_steps(bot_id, start_pos, end_pos, step_size=0.05, speed_factor=1.0):
+def move_bot_in_steps(bot_id, start_pos, end_pos, orientation, step_size=0.05, speed_factor=1.0):
     x1, y1, z1 = start_pos
     x2, y2, z2 = end_pos
-    distance = ((x2 - x1)**2 + (y2 - y1)**2 + (z2 - z1)**2) ** 0.5
+    distance = ((x2 - x1)**2 + (y2 - y1)**2 + (z2 - z1)**2)**0.5
     num_steps = max(1, int(distance / step_size))  # Fine-grained interpolation
 
     # Calculate time per step based on desired speed factor
@@ -97,7 +98,7 @@ def move_bot_in_steps(bot_id, start_pos, end_pos, step_size=0.05, speed_factor=1
             y1 + (y2 - y1) * i / num_steps,
             z1 + (z2 - z1) * i / num_steps
         ]
-        p.resetBasePositionAndOrientation(bot_id, interpolated_pos, [0, 0, 0, 1])
+        p.resetBasePositionAndOrientation(bot_id, interpolated_pos, orientation)
         p.stepSimulation()
         time.sleep(step_duration)
 
@@ -199,3 +200,34 @@ def display_text_above_bot(bot_position, text, previous_text_id=None):
 
     return text_id
 
+def rayCast(position, bot_id):
+
+    print("Bot Position:", position, "bot_id:", bot_id)
+
+    aabb_min, aabb_max = p.getAABB(bot_id)
+    height = aabb_max[2] - aabb_min[2]
+    print("bot height ", height)
+
+    ray_height = aabb_max[2] + 0.2   #needed to put the ray slightly above the bot to prevent self interference.
+
+    ray_length = 5
+
+    ray_results = []
+
+    directions = [
+        ('+X', ray_length, 0, [1, 0, 0]),
+        ('-X', -ray_length, 0, [1, 0, 0]),
+        ('+Y', 0, ray_length, [0, 1, 0]),
+        ('-Y', 0, -ray_length, [0, 1, 0]) 
+    ]
+
+    for name, dx, dy, color in directions:
+        ray_start = [position[0], position[1], ray_height]  # [position[0], position[1], position[2]]
+        ray_end   = [position[0] + dx, position[1] + dy, ray_height] #[position[0] + dx, position[1] + dy, position[2]]
+        result = p.rayTest(ray_start, ray_end)[0]
+
+
+        ray_results.append((result[0], result[2], result[3])) #store the ID, hit fraction and v3 coords of object that was hit.
+        p.addUserDebugLine(ray_start, ray_end, color, lineWidth=2.0, lifeTime=0.1)
+
+    print("ray results:", ray_results, "\n")

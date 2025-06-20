@@ -1,7 +1,8 @@
 from mazeGenerator import generateMaze, assignRandomDeadlines
-from graphics import generate_pybullet_maze, move_bot_in_steps, display_goal_deadlines, draw_path_lines, update_path_as_bot_moves, display_text_above_bot
+from graphics import generate_pybullet_maze, move_bot_in_steps, display_goal_deadlines, draw_path_lines, update_path_as_bot_moves, display_text_above_bot, rayCast
 from agent import astar, greedyAstar, greedy_aStar_with_CSP
 import pybullet as p
+import math
 
 # gridsize, obstacle is 1, # of goals(2), # of enemies(3)
 # Player is #4
@@ -41,7 +42,33 @@ if path:
         update_path_as_bot_moves(path,pathLines,i-1)
             
         next_pos = [step[0], gridSize - step[1] - 1, bot_size]
-        move_bot_in_steps(playerId,bot_pos, next_pos, step_size=0.1, speed_factor=0.3)
+        
+        #orientation stuffs
+        future_x = next_pos[0]
+        cur_x = bot_pos[0]
+        future_y = next_pos[1]
+        cur_y = bot_pos[1]
+
+        if future_x > cur_x:
+            angle = 180 # moving east
+
+        elif future_x < cur_x:
+            angle = -180 # moving west
+
+        elif future_y > cur_y:
+            angle = -90 #North
+
+        elif future_y < cur_y:
+            angle = 90
+        else:
+            angle = 0
+
+        bot_orientation = p.getQuaternionFromEuler([0, 0, math.radians(angle)])
+        #end orientation stuffs
+        
+        rayCast(bot_pos, playerId)
+        
+        move_bot_in_steps(playerId,bot_pos, next_pos,bot_orientation, step_size=0.1, speed_factor=0.3)
         bot_pos = next_pos
         
         status_text = f"Time:{i}"
