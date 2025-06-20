@@ -1,127 +1,54 @@
+from mazeGenerator import generateMaze, assignRandomDeadlines
+from graphics import generate_pybullet_maze, move_bot_in_steps, display_goal_deadlines, draw_path_lines, update_path_as_bot_moves, display_text_above_bot
+from agent import astar, greedyAstar, greedy_aStar_with_CSP
 import pybullet as p
-import pybullet_data
-import time
-import heapq
 
-# Connect to PyBullet GUI
-p.connect(p.GUI)
-p.setGravity(0, 0, -9.81)
-p.setAdditionalSearchPath(pybullet_data.getDataPath())
-p.loadURDF("plane.urdf")
+# gridsize, obstacle is 1, # of goals(2), # of enemies(3)
+# Player is #4
+bot_size = 0.15
+gridSize = 12
+obst_prob = 0.1
+num_agents = 0
+num_goals = 3
+maze1,goals1,startPos = generateMaze(gridSize,obst_prob,num_agents,num_goals)
+goals1 = assignRandomDeadlines(goals1,gridSize,gridSize*2,0.3)
+print("1 maze is:",maze1)
+print("2 goals are",goals1)
+print("3 starting position is",startPos)
 
-# Maze layout: 0 = empty, 1 = wall
-maze = [
-    [0, 1, 0, 0, 0],
-    [0, 1, 0, 1, 0],
-    [0, 0, 0, 1, 0],
-    [1, 1, 0, 1, 0],
-    [0, 0, 0, 0, 0],
-]
+# Generate the GUI maze
+playerId,goals = generate_pybullet_maze(maze1,gridSize,gridSize)
+print("5 player id: ",playerId, "  Goals IDs are ", str(goals))
 
-rows = len(maze)
-cols = len(maze[0])
+display_goal_deadlines(goals1,gridSize)
+# Now Generate the Solutions
 
-# Center camera to view whole maze
-center_x = (cols - 1) / 2
-center_y = (rows - 1) / 2
-p.resetDebugVisualizerCamera(
-    cameraDistance=7,
-    cameraYaw=45,
-    cameraPitch=-45,
-    cameraTargetPosition=[center_x, center_y, 0]
-)
+# a-Single Goal path planning
+# path = astar(startPos,goals1[0],maze1,gridSize)
+# b-Multi-Goal Greedy Path planning
+# path = greedyAstar(startPos,maze1,gridSize)
+path = greedy_aStar_with_CSP(startPos,goals1,maze1,gridSize)
 
-# Build walls
-for y in range(rows):
-    for x in range(cols):
-        if maze[y][x] == 1:
-            wall_shape = p.createCollisionShape(p.GEOM_BOX, halfExtents=[0.5, 0.5, 0.5])
-            wall_visual = p.createVisualShape(p.GEOM_BOX, halfExtents=[0.5, 0.5, 0.5], rgbaColor=[0.3, 0.3, 0.3, 1])
-            p.createMultiBody(baseMass=0, baseCollisionShapeIndex=wall_shape, baseVisualShapeIndex=wall_visual,
-                              basePosition=[x, rows - y - 1, 0.5])
-
-# Create robot cube
-bot_size = 0.2
-bot_col = p.createCollisionShape(p.GEOM_BOX, halfExtents=[bot_size]*3)
-bot_vis = p.createVisualShape(p.GEOM_BOX, halfExtents=[bot_size]*3, rgbaColor=[1, 0, 0, 1])
-start = (0, 4)
-goal = (4, 0)
-bot_pos = [start[0], rows - start[1] - 1, bot_size]
-bot_id = p.createMultiBody(1, bot_col, bot_vis, basePosition=bot_pos)
-
-# Create goal cube
-goal_vis = p.createVisualShape(p.GEOM_BOX, halfExtents=[bot_size]*3, rgbaColor=[0, 1, 0, 1])
-p.createMultiBody(0, -1, goal_vis, basePosition=[goal[0], rows - goal[1] - 1, bot_size])
-
-
-# === A* Pathfinding ===
-def heuristic(a, b):
-    return abs(a[0] - b[0]) + abs(a[1] - b[1])
-
-def neighbors(pos):
-    x, y = pos
-    for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-        nx, ny = x + dx, y + dy
-        if 0 <= nx < cols and 0 <= ny < rows and maze[ny][nx] == 0:
-            yield (nx, ny)
-
-def astar(start, goal):
-    frontier = [(0, start)]
-    came_from = {}
-    cost_so_far = {start: 0}
-
-    while frontier:
-        _, current = heapq.heappop(frontier)
-        if current == goal:
-            break
-        for next_node in neighbors(current):
-            new_cost = cost_so_far[current] + 1
-            if next_node not in cost_so_far or new_cost < cost_so_far[next_node]:
-                cost_so_far[next_node] = new_cost
-                priority = new_cost + heuristic(goal, next_node)
-                heapq.heappush(frontier, (priority, next_node))
-                came_from[next_node] = current
-
-    # Reconstruct path
-    path = []
-    node = goal
-    while node != start:
-        path.append(node)
-        node = came_from.get(node)
-        if node is None:
-            return []
-    path.reverse()
-    return path
-
-
-# === Interpolated Movement ===
-def move_bot_in_steps(start_pos, end_pos, step_size=0.05, speed_factor=1.0):
-    x1, y1, z1 = start_pos
-    x2, y2, z2 = end_pos
-    distance = ((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2) ** 0.5
-    num_steps = int(distance / (step_size * speed_factor))  # Adjust steps based on speed factor
-
-    for i in range(1, num_steps + 1):
-        interpolated_pos = [
-            x1 + (x2 - x1) * i / num_steps,
-            y1 + (y2 - y1) * i / num_steps,
-            z1 + (z2 - z1) * i / num_steps
-        ]
-        p.resetBasePositionAndOrientation(bot_id, interpolated_pos, [0, 0, 0, 1])
-        for _ in range(30):  # Step simulation a bit to visualize the movement
-            p.stepSimulation()
-            time.sleep(1 / 60)
-
-# === Execute Path ===
-path = astar(start, goal)
-print("A* path:", path)
-
-speed_factor = 4  # Adjust this variable to make the bot move slower or faster (1.0 is normal speed)
-
-for step in path:
-    target_pos = [step[0], rows - step[1] - 1, bot_size]
-    move_bot_in_steps(bot_pos, target_pos, step_size=0.05, speed_factor=speed_factor)  # Smooth movement with smaller steps
-    bot_pos = target_pos  # Update current position to the target position
-
+print("6 Final Planned path:",path)
+pathLines = draw_path_lines(path,gridSize)
+# Code to interpolate solution path into pybullet movement
+if path:
+    bot_pos = p.getBasePositionAndOrientation(playerId)[0]
+    print("7 bot position is ", bot_pos)
+    text_id = None
+    for i,step in enumerate(path):
+        
+        update_path_as_bot_moves(path,pathLines,i-1)
+            
+        next_pos = [step[0], gridSize - step[1] - 1, bot_size]
+        move_bot_in_steps(playerId,bot_pos, next_pos, step_size=0.1, speed_factor=0.3)
+        bot_pos = next_pos
+        
+        status_text = f"Time:{i}"
+        text_id = display_text_above_bot(bot_pos, status_text, text_id)
+        # move_agents_randomly()  # Move traffic agents after each bot step
+        # if i>0:
+        #     update_path_as_bot_moves(path,pathLines,i-1)
 input("Press Enter to exit...")
 p.disconnect()
+
