@@ -1,8 +1,10 @@
 from mazeGenerator import generateMaze, assignRandomDeadlines
-from graphics import generate_pybullet_maze, move_bot_in_steps, display_goal_deadlines, draw_path_lines, update_path_as_bot_moves, display_text_above_bot, rayCast
+from graphics import generate_pybullet_maze, move_bot_in_steps, display_goal_deadlines, draw_path_lines, update_path_as_bot_moves, display_text_above_bot, rayCast, move_agents_randomly
 from agent import astar, greedyAstar, greedy_aStar_with_CSP
 import pybullet as p
 import math
+import random
+import time
 
 # gridsize, obstacle is 1, # of goals(2), # of enemies(3)
 # Player is #4
@@ -73,6 +75,13 @@ if path:
         
         status_text = f"Time:{i}"
         text_id = display_text_above_bot(bot_pos, status_text, text_id)
+
+        # Move traffic agents randomly after each player movement
+        move_agents_randomly(traffic_agents_arr, gridSize, bot_size)
+        
+        # Small delay to make movement visible
+        time.sleep(0.05)
+        
         # move_agents_randomly()  # Move traffic agents after each bot step
         # if i>0:
         #     update_path_as_bot_moves(path,pathLines,i-1)
