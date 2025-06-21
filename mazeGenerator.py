@@ -13,7 +13,7 @@ import numpy as np
 """
 
 # Generatae a maze of 0s and 1s for wall or space. 2 for goal, 3s for start(s)
-def generateMaze(dim,obst_prob=0.2,numAgents=1,numGoals=1):
+def generateMaze(dim,obst_prob,numAgents,numGoals=1):
   n = dim # nxn matrix, number of dimensions
   rand_matrix = np.zeros((n,n),dtype=int) #nxn matrix of zeros
   goals=[]
