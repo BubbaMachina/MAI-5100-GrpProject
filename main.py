@@ -1,6 +1,6 @@
 from mazeGenerator import generateMaze, assignRandomDeadlines
 from graphics import generate_pybullet_maze, move_bot_in_steps, display_goal_deadlines, draw_path_lines, update_path_as_bot_moves, display_text_above_bot, rayCast, move_agents_randomly
-from agent import astar, greedyAstar, greedy_aStar_with_CSP
+from agent import astar, greedyAstar, greedy_aStar_with_CSP, reflexive_bot_move, is_near
 import pybullet as p
 import math
 import random
@@ -67,6 +67,11 @@ if path:
 
         bot_orientation = p.getQuaternionFromEuler([0, 0, math.radians(angle)])
         #end orientation stuffs
+
+        if reflexive_bot_move(playerId, traffic_agents_arr, gridSize, bot_size):
+            # If we moved reflexively, skip the planned movement this step
+            time.sleep(0.1)
+            continue
         
         rayCast(bot_pos, playerId)
         
@@ -81,7 +86,7 @@ if path:
         
         # Small delay to make movement visible
         time.sleep(0.05)
-        
+
         # move_agents_randomly()  # Move traffic agents after each bot step
         # if i>0:
         #     update_path_as_bot_moves(path,pathLines,i-1)

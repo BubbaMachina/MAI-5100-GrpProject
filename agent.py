@@ -11,11 +11,14 @@
 ###########################
 # 1) Imports
 ###########################
+import math
 import pybullet as p
 import pybullet_data
 import time
 import heapq
 import random
+
+from graphics import move_bot_in_steps
 
 def heuristic(a, b):
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
@@ -184,4 +187,80 @@ def greedy_aStar_with_CSP(start, goals, grid, gridSize, enemies=None):
     final_path, _ = dfs(start, 0, required_goals)
     return final_path
 
+def is_near(pos1, pos2, threshold=0.5):
+    return (abs(pos1[0] - pos2[0]) < threshold and abs(pos1[1] - pos2[1]) < threshold)
+
+def reflexive_bot_move(bot_id, traffic_agents_arr, gridSize, bot_size):
+    # Get the current position of the bot
+    bot_pos, bot_orient = p.getBasePositionAndOrientation(bot_id)
+    bot_x, bot_y, bot_z = bot_pos
+    
+    # Find all nearby objects (traffic agents and walls)
+    nearby_objects = []
+    
+    # Check traffic agents
+    for agent in traffic_agents_arr:
+        agent_pos, _ = p.getBasePositionAndOrientation(agent[1])
+        if is_near(bot_pos, agent_pos):
+            nearby_objects.append(agent_pos)
+    
+    # Check walls (using raycasting)
+    ray_length = 1.0
+    directions = [[0, 1], [0, -1], [1, 0], [-1, 0]]  # front, back, right, left
+    for dx, dy in directions:
+        ray_end = [bot_x + dx * ray_length, bot_y + dy * ray_length, bot_z]
+        ray_result = p.rayTest(bot_pos, ray_end)
+        if ray_result[0][0] != -1:  # If hit something
+            hit_pos = ray_result[0][3]
+            nearby_objects.append(hit_pos)
+    
+    if not nearby_objects:
+        return False  # No need to move reflexively
+    
+    # Find the nearest obstacle
+    nearest_obstacle = None
+    min_dist = float('inf')
+    
+    for obs_pos in nearby_objects:
+        dist = ((bot_x - obs_pos[0])**2 + (bot_y - obs_pos[1])**2)**0.5
+        if dist < min_dist:
+            min_dist = dist
+            nearest_obstacle = obs_pos
+    
+    if nearest_obstacle:
+        distance_x = nearest_obstacle[0] - bot_x
+        distance_y = nearest_obstacle[1] - bot_y
+        
+        # Determine movement direction (away from obstacle)
+        if abs(distance_x) > abs(distance_y):
+            # Move away horizontally
+            new_x = bot_x - 0.5 if distance_x > 0 else bot_x + 0.5
+            new_y = bot_y  # Keep y-coordinate
+        else:
+            # Move away vertically
+            new_y = bot_y - 0.5 if distance_y > 0 else bot_y + 0.5
+            new_x = bot_x  # Keep x-coordinate
+        
+        # Ensure new position is within bounds
+        new_x = max(bot_size, min(gridSize - 1 - bot_size, new_x))
+        new_y = max(bot_size, min(gridSize - 1 - bot_size, new_y))
+        
+        # Calculate orientation
+        angle = 0
+        if new_x > bot_x:
+            angle = 180  # east
+        elif new_x < bot_x:
+            angle = -180  # west
+        elif new_y > bot_y:
+            angle = -90  # north
+        elif new_y < bot_y:
+            angle = 90  # south
+        
+        new_orient = p.getQuaternionFromEuler([0, 0, math.radians(angle)])
+        
+        # Move smoothly to new position
+        move_bot_in_steps(bot_id, bot_pos, [new_x, new_y, bot_z], new_orient, step_size=0.05, speed_factor=0.3)
+        return True
+    
+    return False
 
