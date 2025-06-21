@@ -8,8 +8,8 @@ import math
 # Player is #4
 bot_size = 0.15
 gridSize = 12
-obst_prob = 0.1
-num_agents = 0
+obst_prob = 0.2
+num_agents = 5
 num_goals = 3
 maze1,goals1,startPos = generateMaze(gridSize,obst_prob,num_agents,num_goals)
 goals1 = assignRandomDeadlines(goals1,gridSize,gridSize*2,0.3)
@@ -18,8 +18,8 @@ print("2 goals are",goals1)
 print("3 starting position is",startPos)
 
 # Generate the GUI maze
-playerId,goals = generate_pybullet_maze(maze1,gridSize,gridSize)
-print("5 player id: ",playerId, "  Goals IDs are ", str(goals))
+playerId,goals,traffic_agents_arr = generate_pybullet_maze(maze1,gridSize,gridSize)
+print("5 player id: ",playerId, "  Goals IDs are ", str(goals), " Traffic agents are ", str(traffic_agents_arr))
 
 display_goal_deadlines(goals1,gridSize)
 # Now Generate the Solutions
