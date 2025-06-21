@@ -37,6 +37,7 @@ def generate_pybullet_maze(maze,maze_rows,maze_cols):
     plane = [0.5,0.5,0.12]
     goals = []
     player_id = None
+    traffic_agents = []
     
     for y in range(maze_rows):
         for x in range(maze_cols):
@@ -57,7 +58,7 @@ def generate_pybullet_maze(maze,maze_rows,maze_cols):
             elif maze[y][x] == 3:
                 agent_vis = p.createVisualShape(p.GEOM_BOX, halfExtents=[0.4]*3, rgbaColor=[0, 0, 1, 1])
                 agent_id = p.createMultiBody(0, -1, agent_vis, basePosition=[x, maze_rows - y - 1, 0.4])
-                # traffic_agents.append([(x, y), agent_id])
+                traffic_agents.append([(x, y), agent_id])
                 # occupied_positions.add((x, y))
             
             
@@ -78,7 +79,7 @@ def generate_pybullet_maze(maze,maze_rows,maze_cols):
                 ground_vis = p.createVisualShape(p.GEOM_BOX, halfExtents=plane, rgbaColor=[1, 1, 1, 1])
                 p.createMultiBody(0, -1, ground_vis, basePosition=[x, maze_rows - y - 1, plane[2]])
     
-    return player_id,goals
+    return player_id,goals,traffic_agents
                 
 # Bot movement
 
