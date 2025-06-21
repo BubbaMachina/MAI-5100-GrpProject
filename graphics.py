@@ -58,7 +58,11 @@ def generate_pybullet_maze(maze,maze_rows,maze_cols):
             elif maze[y][x] == 3:
                 agent_vis = p.createVisualShape(p.GEOM_BOX, halfExtents=[0.4]*3, rgbaColor=[0, 0, 1, 1])
                 agent_id = p.createMultiBody(0, -1, agent_vis, basePosition=[x, maze_rows - y - 1, 0.4])
-                traffic_agents.append([(x, y), agent_id])
+                traffic_agents.append([(x, y, 0.8), agent_id])
+
+                # place a ground tile
+                ground_vis = p.createVisualShape(p.GEOM_BOX, halfExtents=plane, rgbaColor=[1, 1, 1, 1])
+                p.createMultiBody(0, -1, ground_vis, basePosition=[x, maze_rows - y - 1, plane[2]])
                 # occupied_positions.add((x, y))
             
             
@@ -100,8 +104,8 @@ def move_bot_in_steps(bot_id, start_pos, end_pos, orientation, step_size=0.05, s
             z1 + (z2 - z1) * i / num_steps
         ]
         p.resetBasePositionAndOrientation(bot_id, interpolated_pos, orientation)
-        p.stepSimulation()
-        time.sleep(step_duration)
+        # p.stepSimulation()
+        # time.sleep(step_duration)
 
 def display_goal_deadlines(goal_tuples, maze_rows):
     for x, y, deadline in goal_tuples:
@@ -232,3 +236,36 @@ def rayCast(position, bot_id):
         p.addUserDebugLine(ray_start, ray_end, color, lineWidth=2.0, lifeTime=0.1)
 
     print("ray results:", ray_results, "\n")
+
+def move_agents_randomly(traffic_agents_arr, gridSize, bot_size):
+    for traffic_agent in traffic_agents_arr:
+        agent_id = traffic_agent[1]
+        # Get current position
+        current_pos, current_orient = p.getBasePositionAndOrientation(agent_id)
+        
+        # Generate random direction (N, S, E, W)
+        direction = random.choice([(0,1), (0,-1), (1,0), (-1,0)])
+        
+        # Calculate potential new position
+        new_x = current_pos[0] + direction[0] * 0.5  # Move half a cell at a time
+        new_y = current_pos[1] + direction[1] * 0.5
+        
+        # Ensure the new position is within bounds
+        new_x = max(bot_size, min(gridSize - 1 - bot_size, new_x))
+        new_y = max(bot_size, min(gridSize - 1 - bot_size, new_y))
+        
+        # Set orientation based on direction
+        if direction[0] > 0:
+            angle = 180  # east
+        elif direction[0] < 0:
+            angle = -180  # west
+        elif direction[1] > 0:
+            angle = -90  # north
+        else:
+            angle = 90  # south
+            
+        new_orient = p.getQuaternionFromEuler([0, 0, math.radians(angle)])
+        
+        # Smooth movement
+        target_pos = [new_x, new_y, bot_size]
+        move_bot_in_steps(agent_id, current_pos, target_pos, new_orient, step_size=0.05, speed_factor=0.2)
