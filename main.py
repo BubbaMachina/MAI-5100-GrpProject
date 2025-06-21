@@ -8,7 +8,7 @@ import math
 # Player is #4
 bot_size = 0.15
 gridSize = 12
-obst_prob = 0.1
+obst_prob = 0.0
 num_agents = 0
 num_goals = 3
 maze1,goals1,startPos = generateMaze(gridSize,obst_prob,num_agents,num_goals)
