@@ -36,6 +36,7 @@ def generate_pybullet_maze(maze,maze_rows,maze_cols):
     bot_size = 0.2
     plane = [0.5,0.5,0.12]
     goals = []
+    traffic_agents = []
     player_id = None
     
     for y in range(maze_rows):
@@ -55,18 +56,29 @@ def generate_pybullet_maze(maze,maze_rows,maze_cols):
             
             # 3-Place Enemy agents
             elif maze[y][x] == 3:
+                
+                """agent_col = p.createCollisionShape(p.GEOM_BOX, halfExtents=[0.4]*3)
                 agent_vis = p.createVisualShape(p.GEOM_BOX, halfExtents=[0.4]*3, rgbaColor=[0, 0, 1, 1])
-                agent_id = p.createMultiBody(0, -1, agent_vis, basePosition=[x, maze_rows - y - 1, 0.4])
-                # traffic_agents.append([(x, y), agent_id])
+                agent_id = p.createMultiBody(0, -1, agent_vis, basePosition=[x, maze_rows - y - 1, 0.4])"""
+
+                agent_col = p.createCollisionShape(p.GEOM_BOX, halfExtents=[0.5, 0.5, 0.5])
+                agent_vis = p.createVisualShape(p.GEOM_BOX, halfExtents=[0.5, 0.5, 0.5], rgbaColor=[0, 0, 1, 1])
+                agent_id = p.createMultiBody(baseMass=0, baseCollisionShapeIndex=agent_col, baseVisualShapeIndex=agent_vis,
+                                basePosition=[x, maze_rows - y - 1, 0.5])
+
+                ground_vis = p.createVisualShape(p.GEOM_BOX, halfExtents=plane, rgbaColor=[1, 1, 1, 1])
+                p.createMultiBody(0, -1, ground_vis, basePosition=[x, maze_rows - y - 1, plane[2]])
+                traffic_agents.append(agent_id)
                 # occupied_positions.add((x, y))
             
+                #print("Traffic agents>>>>>>>>>>>", traffic_agents)
             
             # 4-Place the Player
             elif maze[y][x] == 4:
                 
                 bot_col = p.createCollisionShape(p.GEOM_BOX, halfExtents=[bot_size]*3)
                 bot_vis = p.createVisualShape(p.GEOM_BOX, halfExtents=[bot_size]*3, rgbaColor=[1, 0, 0, 1])
-                # bot_id = p.createMultiBody(1, bot_col, bot_vis, basePosition=[x,maze_rows-y-1,bot_size])  
+                #bot_id = p.createMultiBody(1, bot_col, bot_vis, basePosition=[x,maze_rows-y-1,bot_size])  
                 bot_id = p.loadURDF("husky/husky.urdf", basePosition=[x, maze_rows - y - 1, 0.2],globalScaling=0.9)
                 player_id = bot_id
                 
@@ -78,7 +90,7 @@ def generate_pybullet_maze(maze,maze_rows,maze_cols):
                 ground_vis = p.createVisualShape(p.GEOM_BOX, halfExtents=plane, rgbaColor=[1, 1, 1, 1])
                 p.createMultiBody(0, -1, ground_vis, basePosition=[x, maze_rows - y - 1, plane[2]])
     
-    return player_id,goals
+    return player_id,goals, traffic_agents
                 
 # Bot movement
 
@@ -200,16 +212,15 @@ def display_text_above_bot(bot_position, text, previous_text_id=None):
 
     return text_id
 
-def rayCast(position, bot_id):
+def rayCast(position, bot_id, traffic_agents):
 
     print("Bot Position:", position, "bot_id:", bot_id)
 
     aabb_min, aabb_max = p.getAABB(bot_id)
     height = aabb_max[2] - aabb_min[2]
-    print("bot height ", height)
+    #print("bot height ", height)
 
     ray_height = aabb_max[2] + 0.2   #needed to put the ray slightly above the bot to prevent self interference.
-
     ray_length = 5
 
     ray_results = []
@@ -226,8 +237,37 @@ def rayCast(position, bot_id):
         ray_end   = [position[0] + dx, position[1] + dy, ray_height] #[position[0] + dx, position[1] + dy, position[2]]
         result = p.rayTest(ray_start, ray_end)[0]
 
-
+        hit_id = result[0]
         ray_results.append((result[0], result[2], result[3])) #store the ID, hit fraction and v3 coords of object that was hit.
         p.addUserDebugLine(ray_start, ray_end, color, lineWidth=2.0, lifeTime=0.1)
+        if hit_id in traffic_agents:
+            enemy_pos, _ = p.getBasePositionAndOrientation(hit_id)
+            display_enemy_detected(hit_id, enemy_pos)
 
-    print("ray results:", ray_results, "\n")
+    ray_results_id = tuple([x[0] for x in ray_results])
+    #print("From ray traffic: ", traffic_agents, "     ray results", ray_results_id)
+    
+    for hit_id in ray_results_id:
+        if hit_id in traffic_agents:
+            print("AGENT FOUND:", hit_id)
+
+    
+
+def display_enemy_detected(enemy_id, position, label="ENEMY DETECTED"):
+    """
+    Draws a floating red debug text above a detected enemy agent.
+    
+    Args:
+        enemy_id (int): PyBullet ID of the enemy.
+        position (tuple): (x, y, z) position of the enemy.
+        label (str): Text to display.
+    """
+    x, y, z = position
+    text_position = [x, y, z + 0.5]  # Raise above the enemy
+    p.addUserDebugText(
+        label,
+        text_position,
+        textColorRGB=[1, 0, 0],
+        textSize=1.2,
+        lifeTime=0.5  # fades after half a second unless refreshed
+        )

@@ -13,7 +13,7 @@ import numpy as np
 """
 
 # Generatae a maze of 0s and 1s for wall or space. 2 for goal, 3s for start(s)
-def generateMaze(dim,obst_prob=0.2,numAgents=1,numGoals=1):
+def generateMaze(dim,obst_prob=0.2,numGoals=1):
   n = dim # nxn matrix, number of dimensions
   rand_matrix = np.zeros((n,n),dtype=int) #nxn matrix of zeros
   goals=[]
@@ -34,10 +34,7 @@ def generateMaze(dim,obst_prob=0.2,numAgents=1,numGoals=1):
     rand_matrix[ny][nx] = 2
     goals.append((nx,ny))
   
-  # Assign enemy agents
-  for i in range(numAgents):
-    rand_matrix[random.randint(0,n-1)][random.randint(0,n-1)] = 3
-    
+
   # insert player randomly
   py = random.randint(0,n-1)
   px = random.randint(0,n-1)
@@ -68,3 +65,21 @@ def assignRandomDeadlines(goals, minDeadline=15, maxDeadline=30, zeroDeadlinePro
             deadline = random.randint(minDeadline, maxDeadline)
         deadline_goals.append((x, y, deadline))
     return deadline_goals
+
+
+def generate_Agents(num_agents, rand_matrix, dim):
+    # Assign enemy agents
+    """for i in range(num_agents):
+        rand_matrix[random.randint(0,dim-1)][random.randint(0,dim-1)] = 3
+    
+    return rand_matrix"""
+
+    agent_positions = []
+    for i in range(num_agents):
+        while True:
+            x, y = random.randint(0, dim-1), random.randint(0, dim-1)
+            if rand_matrix[y][x] == 0:
+                rand_matrix[y][x] = 3
+                agent_positions.append((x, y))
+                break
+    return rand_matrix, agent_positions
