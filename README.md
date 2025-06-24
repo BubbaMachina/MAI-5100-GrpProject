@@ -144,8 +144,6 @@ Watch a demonstration:
 
 ## 🖼️ Screenshots
 
-> *(Add image files to your repository and update the image paths below)*
-
 **Simulation Overview**
 
 ```
