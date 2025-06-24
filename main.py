@@ -9,14 +9,14 @@ import random
 # Player is #4
 bot_size = 0.15
 gridSize = 12
-obst_prob = 0.1
-num_agents = 7
+obst_prob = 0.05
+num_agents = 5
 num_goals = 3
 maze1,goals1,startPos = generateMaze(gridSize,obst_prob,num_goals)
 
 maze2 = generate_Agents(num_agents, maze1, gridSize)
 
-goals1 = assignRandomDeadlines(goals1,gridSize,gridSize*2,0.3)
+goals1 = assignRandomDeadlines(goals1,gridSize*1.5,gridSize*2.5,0.3)
 print("1 maze is:",maze1)
 print("2 goals are",goals1)
 print("3 starting position is",startPos)
