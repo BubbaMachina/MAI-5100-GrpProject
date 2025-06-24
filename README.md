@@ -155,11 +155,11 @@ Watch a demonstration:
 [Enemies 🔵] → Randomly move  
 ```
 
-![Simulation View](screenshots/simulation_view.png)
+![Simulation View](screenshots/Screenshot1.png)
 
 **CSP Planning Logic Debug View**
 
-![CSP Logic View](screenshots/csp_debug_overlay.png)
+![CSP Logic View](screenshots/Screenshot2.png)
 
 ---
 
